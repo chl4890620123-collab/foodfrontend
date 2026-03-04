@@ -23,15 +23,6 @@ jobs:
       - name: Build React app
         run: npm run build
 
-      - name: Check frontend build result
-        run: |
-          if [ -d build ]; then
-            echo "Contents of build:"
-            ls -al build
-          else
-            echo "build directory not found"
-            exit 1
-          fi
           
      # - name: Copy build files to EC2
      #   uses: appleboy/scp-action@v0.1.7
@@ -53,6 +44,7 @@ jobs:
       
 
       
+
 
 
 
