@@ -19,7 +19,8 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        # [수정] EOVERRIDE 에러 방지를 위해 수동 설치 명령 삭제 및 legacy-peer-deps만 사용
+        # [수정] 이미지에서 에러가 났던 'npm install react-is' 줄을 삭제했습니다.
+        # package.json의 overrides 설정이 있으면 이 명령 하나로 완벽하게 설치됩니다.
         run: npm install --legacy-peer-deps
 
       - name: Build project
