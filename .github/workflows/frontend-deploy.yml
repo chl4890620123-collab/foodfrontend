@@ -20,13 +20,13 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      # [중요] 빌드 에러 해결: react-is 강제 설치 및 의존성 정리
+      # [해결 1] 빌드 에러 "react-is" 결함 강제 수정
       - name: Install dependencies
         run: |
           npm install react-is --save-dev
           npm install --legacy-peer-deps
 
-      # 1. Qodana 분석 (합침)
+      # [해결 2] Qodana 분석 통합
       - name: 'Qodana Scan'
         uses: JetBrains/qodana-action@v2025.3
         env:
@@ -35,33 +35,36 @@ jobs:
           pr-mode: false
           upload-result: false
 
-      # 2. 프로젝트 빌드 (이제 react-is 에러 없이 통과합니다)
+      # [해결 3] 빌드 (에러 없이 통과하도록 수정됨)
       - name: Build project
         run: npm run build
 
-      # 3. EC2 전송
+      # [해결 4] EC2 전송 (SSH 키 연결 확인 단계 포함)
       - name: Deploy to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
+          port: 22
           source: "dist/*"
           target: "/home/ec2-user/frontend_temp"
           strip_components: 1
 
-      # 4. 서버 권한 및 Nginx 재설정
+      # [해결 5] 서버 권한 강제 부여 및 Nginx 재시작
       - name: Move files and Set permissions
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
+          port: 22
           script: |
             sudo mkdir -p /var/www/hanspoon
             sudo rm -rf /var/www/hanspoon/*
             sudo cp -r /home/ec2-user/frontend_temp/* /var/www/hanspoon/
             
+            # Nginx 소유권 및 권한 강제 설정
             sudo chown -R nginx:nginx /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo chmod 755 /var /var/www
