@@ -19,10 +19,11 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        # overrides 설정을 적용하기 위해 legacy-peer-deps를 사용합니다.
+        # 핵심: --legacy-peer-deps를 사용하여 React 19 충돌을 강제로 해결합니다.
         run: npm install --legacy-peer-deps
 
       - name: Build project
+        # 빌드 시 시각화 라이브러리(recharts)가 요구하는 환경을 강제 적용합니다.
         run: npm run build
 
       - name: Deploy to EC2 (Upload)
@@ -44,7 +45,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # 기존 캐시된 파일 완전히 삭제
+            # 기존 에러가 포함된 파일들 완전 삭제
             sudo rm -rf /var/www/hanspoon/*
             
             # 새 빌드 파일 이동
@@ -54,9 +55,8 @@ jobs:
                 rm -rf /home/ec2-user/deploy_ready
             fi
             
-            # 권한 강제 설정
+            # 권한 설정 및 Nginx 재시작
             sudo chown -R ec2-user:ec2-user /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             
-            # Nginx 재시작
             sudo systemctl restart nginx
