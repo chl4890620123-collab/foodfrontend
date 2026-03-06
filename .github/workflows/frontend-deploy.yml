@@ -19,13 +19,13 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        # 개별 install 대신 legacy-peer-deps를 통해 
-        # recharts가 요구하는 react-is 버전을 강제로 맞춥니다.
-        run: npm install --legacy-peer-deps
+        # 핵심 변경 사항: recharts의 의존성 누락을 해결하기 위해 react-is를 직접 설치합니다.
+        run: |
+          npm install react-is --legacy-peer-deps
+          npm install --legacy-peer-deps
 
       - name: Build project
-        # 빌드 시 발생하는 react-is 미참조 에러를 방지하기 위해 
-        # CI 환경에서 최적화된 빌드를 수행합니다.
+        # 이제 react-is가 존재하므로 빌드가 성공합니다.
         run: npm run build
 
       - name: Deploy to EC2 (Upload)
@@ -47,20 +47,20 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # 1. 경로 준비 및 기존 잔해 제거
+            # 1. 경로 준비 및 기존 파일 삭제
             sudo mkdir -p /var/www/hanspoon
             sudo rm -rf /var/www/hanspoon/*
             
-            # 2. 임시 대기소에서 실제 서비스 경로로 복사 및 정리
+            # 2. 임시 대기소에서 서비스 경로로 복사 (안전하게 cp 사용)
             if [ -d "/home/ec2-user/deploy_ready" ]; then
                 sudo cp -r /home/ec2-user/deploy_ready/* /var/www/hanspoon/
                 rm -rf /home/ec2-user/deploy_ready
             fi
             
-            # 3. 권한 설정 (Nginx 계정 반영)
+            # 3. 권한 설정 (403/forwardRef 오류 방지 필살기)
             sudo chown -R nginx:nginx /var/www/hanspoon || sudo chown -R ec2-user:ec2-user /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo chmod 755 /var /var/www
             
-            # 4. Nginx 설정 테스트 및 재시작
+            # 4. Nginx 재시작
             sudo nginx -t && sudo systemctl restart nginx
