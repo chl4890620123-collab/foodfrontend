@@ -19,7 +19,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        # [중요] overrides 충돌을 피하기 위해 오직 이 명령 하나만 사용합니다.
+        #Overrides 충돌 방지를 위해 legacy-peer-deps 옵션만 사용합니다.
         run: npm install --legacy-peer-deps
 
       - name: Build project
