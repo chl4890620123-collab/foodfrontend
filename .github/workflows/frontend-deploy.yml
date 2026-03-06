@@ -34,10 +34,10 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           source: "dist/*"
-          target: "/home/ec2-user/hanspoon_deploy"
+          target: "/home/ec2-user/deploy_ready" # 임시 대기소
           strip_components: 1
 
-      - name: Move files and Set permissions
+      - name: Final Move and Nginx Refresh
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -45,17 +45,17 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # 1. 대상 폴더 클린업
+            # 1. Nginx 서비스 경로 초기화
             sudo mkdir -p /var/www/hanspoon
             sudo rm -rf /var/www/hanspoon/*
             
-            # 2. 전송된 파일 이동 (cp 대신 mv 권장)
-            if [ -d "/home/ec2-user/hanspoon_deploy" ]; then
-                sudo mv /home/ec2-user/hanspoon_deploy/* /var/www/hanspoon/
-                rm -rf /home/ec2-user/hanspoon_deploy
+            # 2. 임시 대기소에 있는 파일들을 서비스 경로로 이동
+            if [ -d "/home/ec2-user/deploy_ready" ]; then
+                sudo mv /home/ec2-user/deploy_ready/* /var/www/hanspoon/
+                rm -rf /home/ec2-user/deploy_ready
             fi
             
-            # 3. 권한 설정
+            # 3. 권한 설정 (403 Forbidden 해결 필살기)
             sudo chown -R nginx:nginx /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo chmod 755 /var /var/www
