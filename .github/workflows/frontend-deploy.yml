@@ -19,10 +19,8 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        # 핵심: react-is를 직접 명시하여 설치하고, 버전 충돌을 무시합니다.
-        run: |
-          npm install react-is --save-dev --legacy-peer-deps
-          npm install --legacy-peer-deps
+        # [수정] EOVERRIDE 에러 방지를 위해 수동 설치 명령 삭제 및 legacy-peer-deps만 사용
+        run: npm install --legacy-peer-deps
 
       - name: Build project
         run: npm run build
@@ -46,17 +44,12 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # 1. 서버에 남은 이전 에러 찌꺼기를 완전히 삭제합니다.
             sudo rm -rf /var/www/hanspoon/*
-            
-            # 2. 새 빌드 파일을 이동합니다.
             if [ -d "/home/ec2-user/deploy_ready" ]; then
                 sudo mkdir -p /var/www/hanspoon
                 sudo cp -r /home/ec2-user/deploy_ready/* /var/www/hanspoon/
                 rm -rf /home/ec2-user/deploy_ready
             fi
-            
-            # 3. 권한 설정 및 Nginx 재시작
             sudo chown -R ec2-user:ec2-user /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo systemctl restart nginx
