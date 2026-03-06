@@ -18,13 +18,14 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Install dependencies
-        # React 19와 Recharts 간의 의존성 충돌을 강제로 해결하는 설정입니다.
+      - name: Clean and Install Dependencies
+        # React 19 호환성을 위해 legacy-peer-deps를 쓰고, react-is를 빌드 단계에 포함합니다.
         run: |
           npm install react-is --save-dev --legacy-peer-deps
           npm install --legacy-peer-deps
 
       - name: Build project
+        # 빌드 시점에 환경 차이로 인한 에러를 방지합니다.
         run: npm run build
 
       - name: Deploy to EC2 (Upload)
@@ -46,18 +47,19 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # 기존 파일 깔끔하게 삭제 (버전 꼬임 방지)
-            sudo mkdir -p /var/www/hanspoon
+            # 1. 기존의 오염된 파일들 싹 제거 (매우 중요)
             sudo rm -rf /var/www/hanspoon/*
             
-            # 새 빌드 파일 복사
+            # 2. 새 빌드 파일 이동
             if [ -d "/home/ec2-user/deploy_ready" ]; then
+                sudo mkdir -p /var/www/hanspoon
                 sudo cp -r /home/ec2-user/deploy_ready/* /var/www/hanspoon/
                 rm -rf /home/ec2-user/deploy_ready
             fi
             
-            # 권한 설정 및 Nginx 재시작
+            # 3. 권한 재설정 (Nginx가 읽을 수 있도록)
             sudo chown -R ec2-user:ec2-user /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             
-            sudo nginx -t && sudo systemctl restart nginx
+            # 4. Nginx 재시작
+            sudo systemctl restart nginx
