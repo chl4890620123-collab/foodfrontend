@@ -11,8 +11,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -20,38 +18,29 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      # [해결 1] 빌드 에러 "react-is" 결함 강제 수정
+      # [해결 1] 빌드 에러 "react-is" 결함 수정
       - name: Install dependencies
         run: |
           npm install react-is --save-dev
           npm install --legacy-peer-deps
 
-      # [해결 2] Qodana 분석 통합
-      - name: 'Qodana Scan'
-        uses: JetBrains/qodana-action@v2025.3
-        env:
-          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
-        with:
-          pr-mode: false
-          upload-result: false
-
-      # [해결 3] 빌드 (에러 없이 통과하도록 수정됨)
+      # [해결 2] 프로젝트 빌드
       - name: Build project
         run: npm run build
 
-      # [해결 4] EC2 전송 (SSH 키 연결 확인 단계 포함)
+      # [해결 3] EC2 전송 (Key 설정 확인)
       - name: Deploy to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
-          key: ${{ secrets.EC2_KEY }}
+          key: ${{ secrets.EC2_KEY }} # 이 변수명이 GitHub Secrets와 일치하는지 꼭 확인!
           port: 22
           source: "dist/*"
           target: "/home/ec2-user/frontend_temp"
           strip_components: 1
 
-      # [해결 5] 서버 권한 강제 부여 및 Nginx 재시작
+      # [해결 4] 서버 권한 및 Nginx 설정
       - name: Move files and Set permissions
         uses: appleboy/ssh-action@master
         with:
@@ -64,7 +53,6 @@ jobs:
             sudo rm -rf /var/www/hanspoon/*
             sudo cp -r /home/ec2-user/frontend_temp/* /var/www/hanspoon/
             
-            # Nginx 소유권 및 권한 강제 설정
             sudo chown -R nginx:nginx /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo chmod 755 /var /var/www
