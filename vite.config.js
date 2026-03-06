@@ -7,8 +7,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    // recharts와 react-is를 빌드 전에 미리 준비시킵니다.
     optimizeDeps: {
+      // recharts와 그 부속 부품들을 빌드 전에 미리 준비시킵니다.
       include: ["recharts", "react-is"],
     },
     server: {
@@ -18,15 +18,15 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      // react-is 같은 옛날 방식의 모듈을 Vite가 읽을 수 있게 합니다.
       commonjsOptions: {
+        // react-is 같은 CommonJS 모듈을 Vite가 정상적으로 처리하도록 설정합니다.
         include: [/node_modules/],
       },
       rollupOptions: {
         output: {
           manualChunks(id) {
             if (!id.includes("node_modules")) return;
-            // react 핵심 부품들을 하나로 묶어 'Activity' 설정 에러를 방지합니다.
+            // react 핵심과 react-is를 한 덩어리로 묶어 버전 갈등을 방지합니다.
             if (id.includes("react-dom") || id.includes("react") || id.includes("react-is")) {
               return "react-vendor";
             }
