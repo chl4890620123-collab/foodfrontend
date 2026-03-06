@@ -7,8 +7,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // [수정] 빌드 전 recharts와 react-is 부품을 미리 로드하도록 설정
     optimizeDeps: {
-      // recharts와 그 부속 부품들을 빌드 전에 미리 준비시킵니다.
       include: ["recharts", "react-is"],
     },
     server: {
@@ -18,15 +18,15 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      // [수정] react-is(CommonJS)를 Vite가 정상 인식하도록 변환기 설정
       commonjsOptions: {
-        // react-is 같은 CommonJS 모듈을 Vite가 정상적으로 처리하도록 설정합니다.
         include: [/node_modules/],
       },
       rollupOptions: {
         output: {
           manualChunks(id) {
             if (!id.includes("node_modules")) return;
-            // react 핵심과 react-is를 한 덩어리로 묶어 버전 갈등을 방지합니다.
+            // [수정] react 핵심 부품들을 하나로 묶어 Activity 에러 원천 봉쇄
             if (id.includes("react-dom") || id.includes("react") || id.includes("react-is")) {
               return "react-vendor";
             }
