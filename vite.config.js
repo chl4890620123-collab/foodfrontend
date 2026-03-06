@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    // [핵심] 빌드 로봇이 recharts와 react-is를 미리 인식하도록 합니다.
+    // recharts와 react-is를 빌드 전에 미리 준비시킵니다.
     optimizeDeps: {
       include: ["recharts", "react-is"],
     },
@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      // [핵심] 옛날 방식의 react-is를 최신 방식으로 변환해 빌드에 포함합니다.
+      // react-is 같은 옛날 방식의 모듈을 Vite가 읽을 수 있게 합니다.
       commonjsOptions: {
         include: [/node_modules/],
       },
@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (!id.includes("node_modules")) return;
-            // react 관련 부품들을 하나로 묶어 forwardRef 에러를 원천 봉쇄합니다.
+            // react 핵심 부품들을 하나로 묶어 'Activity' 설정 에러를 방지합니다.
             if (id.includes("react-dom") || id.includes("react") || id.includes("react-is")) {
               return "react-vendor";
             }
