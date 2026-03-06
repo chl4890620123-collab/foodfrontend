@@ -19,8 +19,8 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        # [수정] 이미지에서 에러가 났던 'npm install react-is' 명령을 완전히 삭제했습니다.
-        # package.json의 overrides 설정이 있으면 아래 명령 하나로 모든 의존성이 완벽히 설치됩니다.
+        # [수정] 충돌을 일으키던 npm install react-is 줄을 삭제했습니다.
+        # package.json의 overrides가 이 역할을 대신하므로 아래 명령 하나면 충분합니다.
         run: npm install --legacy-peer-deps
 
       - name: Build project
