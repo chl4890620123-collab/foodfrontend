@@ -11,9 +11,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # [수정] 의존성 충돌 방지를 위해 legacy-peer-deps 추가
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20' # 프로젝트 노드 버전에 맞게 수정 (보통 18 또는 20)
+
+      # [핵심] 라이브러리 충돌 방지를 위해 기존 캐시 무시하고 깨끗하게 설치
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: |
+          npm install --legacy-peer-deps
 
       - name: Build project
         run: npm run build
@@ -24,7 +30,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
-          source: "dist/*"
+          source: "dist/*" 
           target: "/home/ec2-user/frontend_temp"
           strip_components: 1
 
@@ -39,7 +45,7 @@ jobs:
             sudo rm -rf /var/www/hanspoon/*
             sudo cp -r /home/ec2-user/frontend_temp/* /var/www/hanspoon/
             
-            # 권한 강제 재설정
+            # Nginx 권한 강제 부여
             sudo chown -R nginx:nginx /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo chmod 755 /var /var/www
