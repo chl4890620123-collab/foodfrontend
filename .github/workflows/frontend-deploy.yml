@@ -18,9 +18,10 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Clean Install dependencies
         run: |
-          npm install react-is --save-dev
+          # 꼬인 의존성을 해결하기 위해 기존의 복잡한 install 대신
+          # 최대한 깨끗하게 설치합니다.
           npm install --legacy-peer-deps
 
       - name: Build project
@@ -34,7 +35,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           source: "dist/*"
-          target: "/home/ec2-user/deploy_ready" # 임시 대기소
+          target: "/home/ec2-user/deploy_ready" 
           strip_components: 1
 
       - name: Final Move and Nginx Refresh
@@ -45,18 +46,20 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # 1. Nginx 서비스 경로 초기화
+            # 1. 경로 준비 및 기존 파일 완전 삭제
             sudo mkdir -p /var/www/hanspoon
             sudo rm -rf /var/www/hanspoon/*
             
-            # 2. 임시 대기소에 있는 파일들을 서비스 경로로 이동
+            # 2. 임시 폴더에서 실제 서비스 폴더로 이동
             if [ -d "/home/ec2-user/deploy_ready" ]; then
-                sudo mv /home/ec2-user/deploy_ready/* /var/www/hanspoon/
+                # 혹시 이동이 안 될 경우를 대비해 sudo cp 후 rm 방식을 사용합니다.
+                sudo cp -r /home/ec2-user/deploy_ready/* /var/www/hanspoon/
                 rm -rf /home/ec2-user/deploy_ready
             fi
             
-            # 3. 권한 설정 (403 Forbidden 해결 필살기)
-            sudo chown -R nginx:nginx /var/www/hanspoon
+            # 3. 권한 설정 (Nginx 실행 계정 확인: 보통 nginx 또는 www-data)
+            # Amazon Linux 2023 등을 쓰신다면 nginx 계정이 맞습니다.
+            sudo chown -R nginx:nginx /var/www/hanspoon || sudo chown -R ec2-user:ec2-user /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo chmod 755 /var /var/www
             
