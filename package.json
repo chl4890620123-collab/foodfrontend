@@ -33,6 +33,6 @@
   "overrides": {
     "react": "$react",
     "react-dom": "$react-dom",
-    "react-is": "^19.0.0"
+    "react-is": "19.0.0" 
   }
 }
