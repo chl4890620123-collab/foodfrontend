@@ -1,36 +1,32 @@
-name: Frontend Unified Deployment
+name: Frontend Unified Pipeline
 
 on:
   push:
     branches: ["main", "dev"]
-  workflow_dispatch: # 수동 실행 버튼 활성화
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      checks: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 1. Node.js 환경 설정
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      # 2. 의존성 설치 (버전 충돌 방지 및 클린 설치)
+      # [중요] 빌드 에러 해결: react-is 강제 설치 및 의존성 정리
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: |
+          npm install react-is --save-dev
+          npm install --legacy-peer-deps
 
-      # 3. [선택] Qodana 코드 분석 (필요 없으면 이 step 삭제 가능)
+      # 1. Qodana 분석 (합침)
       - name: 'Qodana Scan'
         uses: JetBrains/qodana-action@v2025.3
         env:
@@ -39,22 +35,22 @@ jobs:
           pr-mode: false
           upload-result: false
 
-      # 4. 프로젝트 빌드 (서버에 올릴 실제 파일 생성)
+      # 2. 프로젝트 빌드 (이제 react-is 에러 없이 통과합니다)
       - name: Build project
         run: npm run build
 
-      # 5. 빌드 결과물 EC2 임시 경로로 전송
+      # 3. EC2 전송
       - name: Deploy to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
-          source: "dist/*" 
+          source: "dist/*"
           target: "/home/ec2-user/frontend_temp"
           strip_components: 1
 
-      # 6. 서버 내 파일 교체 및 Nginx 권한 강제 설정
+      # 4. 서버 권한 및 Nginx 재설정
       - name: Move files and Set permissions
         uses: appleboy/ssh-action@master
         with:
@@ -62,21 +58,14 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
           script: |
-            # 기존 웹 루트 비우기
             sudo mkdir -p /var/www/hanspoon
             sudo rm -rf /var/www/hanspoon/*
-            
-            # 새 파일 복사
             sudo cp -r /home/ec2-user/frontend_temp/* /var/www/hanspoon/
             
-            # Nginx 소유권 및 접근 권한 강제 부여 (가장 중요)
             sudo chown -R nginx:nginx /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo chmod 755 /var /var/www
             
-            # 보안 정책 해제 및 Nginx 재시작
             sudo setenforce 0 || true
             sudo systemctl restart nginx
-            
-            # 임시 파일 삭제
             rm -rf /home/ec2-user/frontend_temp
