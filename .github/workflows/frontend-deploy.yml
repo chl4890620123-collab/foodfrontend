@@ -19,7 +19,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        # 핵심: react-is를 강제로 설치 목록에 넣고, legacy-peer-deps로 버전 충돌을 무시합니다.
+        # React 19와 Recharts 간의 의존성 충돌을 강제로 해결하는 설정입니다.
         run: |
           npm install react-is --save-dev --legacy-peer-deps
           npm install --legacy-peer-deps
@@ -35,7 +35,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           source: "dist/*"
-          target: "/home/ec2-user/deploy_ready" 
+          target: "/home/ec2-user/deploy_ready"
           strip_components: 1
 
       - name: Final Move and Nginx Refresh
@@ -46,16 +46,18 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
+            # 기존 파일 깔끔하게 삭제 (버전 꼬임 방지)
             sudo mkdir -p /var/www/hanspoon
             sudo rm -rf /var/www/hanspoon/*
             
+            # 새 빌드 파일 복사
             if [ -d "/home/ec2-user/deploy_ready" ]; then
                 sudo cp -r /home/ec2-user/deploy_ready/* /var/www/hanspoon/
                 rm -rf /home/ec2-user/deploy_ready
             fi
             
-            sudo chown -R nginx:nginx /var/www/hanspoon || sudo chown -R ec2-user:ec2-user /var/www/hanspoon
+            # 권한 설정 및 Nginx 재시작
+            sudo chown -R ec2-user:ec2-user /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
-            sudo chmod 755 /var /var/www
             
             sudo nginx -t && sudo systemctl restart nginx
