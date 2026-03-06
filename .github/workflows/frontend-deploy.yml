@@ -18,14 +18,11 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Clean and Install Dependencies
-        # React 19 호환성을 위해 legacy-peer-deps를 쓰고, react-is를 빌드 단계에 포함합니다.
-        run: |
-          npm install react-is --save-dev --legacy-peer-deps
-          npm install --legacy-peer-deps
+      - name: Install dependencies
+        # overrides 설정을 적용하기 위해 legacy-peer-deps를 사용합니다.
+        run: npm install --legacy-peer-deps
 
       - name: Build project
-        # 빌드 시점에 환경 차이로 인한 에러를 방지합니다.
         run: npm run build
 
       - name: Deploy to EC2 (Upload)
@@ -47,19 +44,19 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # 1. 기존의 오염된 파일들 싹 제거 (매우 중요)
+            # 기존 캐시된 파일 완전히 삭제
             sudo rm -rf /var/www/hanspoon/*
             
-            # 2. 새 빌드 파일 이동
+            # 새 빌드 파일 이동
             if [ -d "/home/ec2-user/deploy_ready" ]; then
                 sudo mkdir -p /var/www/hanspoon
                 sudo cp -r /home/ec2-user/deploy_ready/* /var/www/hanspoon/
                 rm -rf /home/ec2-user/deploy_ready
             fi
             
-            # 3. 권한 재설정 (Nginx가 읽을 수 있도록)
+            # 권한 강제 설정
             sudo chown -R ec2-user:ec2-user /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             
-            # 4. Nginx 재시작
+            # Nginx 재시작
             sudo systemctl restart nginx
