@@ -20,22 +20,21 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build React app
+      - name: Build React app (Vite)
         run: npm run build
 
-      # 1. 빌드된 파일을 EC2로 전송 (주석 해제 및 경로 수정)
+      # 1. 빌드된 dist 폴더 내용을 EC2로 전송
       - name: Copy build files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ec2-user  # Amazon Linux는 ec2-user가 기본입니다.
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          # 보통 Vite는 dist, Create React App은 build 폴더에 결과물이 생깁니다. 확인 후 수정하세요.
           source: "dist/*" 
           target: "/home/ec2-user/frontend"
-          strip_components: 1 # dist 폴더 자체를 제외하고 그 안의 내용물만 target에 넣습니다.
+          strip_components: 1
 
-      # 2. Nginx 재시작하여 반영 (주석 해제 및 명령어 정리)
+      # 2. Nginx 재시작
       - name: Reload Nginx
         uses: appleboy/ssh-action@v0.1.10
         with:
