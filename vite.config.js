@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    // [중요] Recharts가 필요한 react-is를 미리 준비시킵니다.
+    // Recharts가 사용하는 react-is를 React 19와 동기화
     optimizeDeps: {
       include: ["recharts", "react-is"],
     },
@@ -25,16 +25,15 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (!id.includes("node_modules")) return;
-            // [중요] react 관련 모든 부품을 'react-vendor' 하나로 묶어 forwardRef 에러를 방지합니다.
+            // React 핵심 라이브러리를 하나로 묶어 의존성 꼬임 방지
             if (
               id.includes("react-dom") || 
               id.includes("react-is") || 
-              id.includes("/react/") ||
+              id.includes("/react/") || 
               id.includes("scheduler")
             ) {
               return "react-vendor";
             }
-            if (id.includes("react-router")) return "router";
             if (id.includes("recharts")) return "recharts-vendor";
             return "vendor";
           },
