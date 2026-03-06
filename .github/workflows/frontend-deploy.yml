@@ -2,7 +2,7 @@ name: Frontend Deployment
 
 on:
   push:
-    branches: [ "main" ] # 본인의 메인 브랜치명 확인
+    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
@@ -11,28 +11,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 1. 의존성 꼬임 방지를 위한 클린 설치 (forwardRef 에러 해결용)
+      # [수정] 라이브러리 충돌(forwardRef 에러) 방지를 위한 설치 명령
       - name: Install dependencies
         run: |
-          rm -rf node_modules package-lock.json
-          npm install
+          npm install --legacy-peer-deps
 
-      # 2. 프로젝트 빌드
       - name: Build project
         run: npm run build
 
-      # 3. 빌드된 결과물을 EC2 임시 폴더로 전송
       - name: Deploy to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
-          source: "dist/*"  # Vite 사용 시 dist, CRA 사용 시 build 확인
+          source: "dist/*"
           target: "/home/ec2-user/frontend_temp"
           strip_components: 1
 
-      # 4. 파일 이동 및 Nginx 권한/보안 설정 강제 적용
       - name: Move files and Set permissions
         uses: appleboy/ssh-action@master
         with:
@@ -40,21 +36,13 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
           script: |
-            # 1. 대상 디렉토리 준비 (기존 파일 삭제)
             sudo mkdir -p /var/www/hanspoon
             sudo rm -rf /var/www/hanspoon/*
-            
-            # 2. 임시 폴더에서 웹 루트로 복사
             sudo cp -r /home/ec2-user/frontend_temp/* /var/www/hanspoon/
             
-            # 3. 상위 경로 포함 권한 완전 개방
             sudo chown -R nginx:nginx /var/www/hanspoon
             sudo chmod -R 755 /var/www/hanspoon
             sudo chmod 755 /var /var/www
             
-            # 4. 보안 정책(SELinux) 해제 및 Nginx 재시작
             sudo setenforce 0 || true
             sudo systemctl restart nginx
-            
-            # 5. 임시 폴더 정리
-            rm -rf /home/ec2-user/frontend_temp
