@@ -1,56 +1,36 @@
-name: Frontend Unified Pipeline
-
-on:
-  push:
-    branches: ["main"]
-  workflow_dispatch:
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install dependencies
-        # [수정] 충돌을 일으키던 npm install react-is 줄을 삭제했습니다.
-        # package.json의 overrides가 이 역할을 대신하므로 아래 명령 하나면 충분합니다.
-        run: npm install --legacy-peer-deps
-
-      - name: Build project
-        run: npm run build
-
-      - name: Deploy to EC2 (Upload)
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          source: "dist/*"
-          target: "/home/ec2-user/deploy_ready"
-          strip_components: 1
-
-      - name: Final Move and Nginx Refresh
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            sudo rm -rf /var/www/hanspoon/*
-            if [ -d "/home/ec2-user/deploy_ready" ]; then
-                sudo mkdir -p /var/www/hanspoon
-                sudo cp -r /home/ec2-user/deploy_ready/* /var/www/hanspoon/
-                rm -rf /home/ec2-user/deploy_ready
-            fi
-            sudo chown -R ec2-user:ec2-user /var/www/hanspoon
-            sudo chmod -R 755 /var/www/hanspoon
-            sudo systemctl restart nginx
+{
+  "name": "hanspoon-front",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.2.0",
+    "axios": "^1.13.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.0",
+    "recharts": "^3.7.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "typescript": "^5.7.3",
+    "vite": "^7.3.1",
+    "react-is": "19.0.0"
+  },
+  "overrides": {
+    "react-is": "19.0.0"
+  }
+}
