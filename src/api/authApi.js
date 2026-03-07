@@ -1,98 +1,46 @@
-import axiosInstance from './axios';
-import { saveAuth, clearAuth, loadAuth, getAccessToken } from '../utils/authStorage';
+import axios from 'axios';
+import { getAccessToken, clearAuth } from '../utils/authStorage';
 
-/**
- * 인증 관련 API
- */
-export const authApi = {
-    /**
-     * 로그인
-     * @param {Object} credentials - { email, password }
-     * @returns {Promise<Object>} { success, data: { token, user }, message }
-     */
-    login: async (credentials) => {
-        const response = await axiosInstance.post('/api/auth/login', credentials);
+// [수정] 환경에 따라 백엔드 주소(8080 포트)를 자동으로 결정합니다.
+function resolveApiBaseUrl() {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return "http://localhost:8080"; // 로컬 환경
+  }
+  // 실제 배포된 EC2 IP와 백엔드 포트 8080 (16.184.21.196)
+  return "http://16.184.21.196:8080"; 
+}
 
-        console.log('[AuthApi] Login response:', response.data);
-        if (response.data.data?.accessToken) {
-            console.log('[AuthApi] Token found, saving to storage');
-            saveAuth({
-                accessToken: response.data.data.accessToken,
-                tokenType: response.data.data.tokenType || 'Bearer',
-                userId: response.data.data.userId,
-                email: response.data.data.email,
-                userName: response.data.data.userName,
-                role: response.data.data.role
-            });
-        } else {
-            console.error('[AuthApi] Token NOT found in response data');
-        }
+const axiosInstance = axios.create({
+  baseURL: resolveApiBaseUrl(),
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+});
 
-        return response.data;
-    },
-
-    /**
-     * 회원가입
-     * @param {Object} userData - { email, password, name, ... }
-     * @returns {Promise<Object>}
-     */
-    register: async (userData) => {
-        const response = await axiosInstance.post('/api/auth/register', userData);
-        return response.data;
-    },
-
-    /**
-     * 로그아웃
-     */
-    logout: () => {
-        clearAuth();
-        // 필요시 서버에 로그아웃 요청
-        // await axiosInstance.post('/api/auth/logout');
-    },
-
-    /**
-     * 현재 사용자 정보 조회
-     * @returns {Promise<Object>}
-     */
-    getCurrentUser: async () => {
-        const response = await axiosInstance.get('/api/auth/me');
-        return response.data;
-    },
-
-    /**
-     * 토큰 유효성 검증
-     * @returns {boolean}
-     */
-    isAuthenticated: () => {
-        return !!getAccessToken();
-    },
-
-    /**
-     * 관리자 여부 확인
-     * @returns {boolean}
-     */
-    isAdmin: () => {
-        const auth = loadAuth();
-        return auth?.role && auth.role.includes('ROLE_ADMIN');
-    },
-
-    /**
-     * 아이디 찾기
-     * @param {Object} data - { userName, phone }
-     * @returns {Promise<Object>}
-     */
-    findId: async (data) => {
-        const response = await axiosInstance.post('/api/auth/find-email', data);
-        return response.data;
-    },
-
-    /**
-     * 비밀번호 재설정 (찾기)
-     * @param {Object} data - { email, userName, phone }
-     * @returns {Promise<Object>}
-     */
-    resetPassword: async (data) => {
-        const response = await axiosInstance.post('/api/auth/reset-password', data);
-        return response.data;
+// 인터셉터: 요청 시 토큰 주입
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-};
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// 인터셉터: 응답 에러(401 등) 처리
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      clearAuth();
+      // 필요 시 로그인 페이지로 리다이렉트 로직 추가 가능
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default axiosInstance;
