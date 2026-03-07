@@ -1,62 +1,30 @@
-import { http } from "./http";
+import axios from 'axios';
+import { getAccessToken, clearAuth } from '../utils/authStorage';
 
-export async function fetchAdminProducts(params) {
-  const res = await http.get("/api/products", { params });
-  return res.data;
-}
-
-export async function fetchAdminProductDetail(productId) {
-  const res = await http.get(`/api/products/${Number(productId)}`);
-  return res.data;
-}
-
-export async function createAdminProduct(payload) {
-  const res = await http.post("/api/products", payload);
-  return res.data;
-}
-
-export async function updateAdminProduct(productId, payload) {
-  const res = await http.put(`/api/products/${Number(productId)}`, payload);
-  return res.data;
-}
-
-export async function fetchProductImages(productId) {
-  const res = await http.get(`/api/products/${Number(productId)}/images`);
-  return Array.isArray(res.data) ? res.data : [];
-}
-
-export async function uploadProductImages(productId, files, repIndex) {
-  const fd = new FormData();
-  (files || []).forEach((file) => fd.append("files", file));
-  if (repIndex !== undefined && repIndex !== null) {
-    fd.append("repIndex", String(repIndex));
+// [수정] 접속 환경에 따라 백엔드 주소(8080 포트)를 자동으로 결정합니다.
+function resolveApiBaseUrl() {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return "http://localhost:8080"; // 로컬 환경
   }
-  const res = await http.post(`/api/products/${Number(productId)}/images`, fd);
-  return Array.isArray(res.data) ? res.data : [];
+  // 실제 배포된 EC2 IP와 백엔드 포트 8080
+  return "http://16.184.21.196:8080"; 
 }
 
-export async function deleteProductImage(productId, imageId) {
-  await http.del(`/api/products/${Number(productId)}/images/${Number(imageId)}`);
-}
+const instance = axios.create({
+  baseURL: resolveApiBaseUrl(),
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+});
 
-export async function fetchAdminProductInquiries(page = 0, size = 20) {
-  const res = await http.get("/api/admin/inquiries", { params: { page, size } });
-  return res.data;
-}
+// 기존의 interceptors 로직이 있다면 그대로 유지하면서 아래 'http' 객체를 export 하세요.
+export const http = {
+  get: (url, config) => instance.get(url, config),
+  post: (url, data, config) => instance.post(url, data, config),
+  put: (url, data, config) => instance.put(url, data, config),
+  del: (url, config) => instance.delete(url, config), // delete를 del로 매핑
+};
 
-export async function answerAdminProductInquiry(inqId, answer) {
-  const res = await http.post(`/api/inquiries/${Number(inqId)}/answer`, { answer });
-  return res.data;
-}
-
-export async function fetchProductReviewsByProduct(productId, page = 0, size = 20, opt = {}) {
-  const params = {
-    page,
-    size,
-    sort: opt.sort || "LATEST",
-    rating: opt.rating,
-    keyword: opt.keyword,
-  };
-  const res = await http.get(`/api/products/${Number(productId)}/reviews`, { params });
-  return res.data;
-}
+export default instance;
