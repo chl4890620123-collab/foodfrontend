@@ -1,58 +1,42 @@
-// src/api/auth.js
-import { http } from "./http";
+import axios from 'axios';
+import { getAccessToken, clearAuth } from '../utils/authStorage';
 
-// ApiResponse 래퍼 풀기
-function unwrap(resBody) {
-  // 백엔드가 ApiResponse<T>로 주는 경우: { success, message, data }
-  if (resBody && typeof resBody === "object" && "data" in resBody) {
-    return resBody.data;
+// [수정] 환경에 따라 백엔드(8080 포트) 주소를 정확히 반환합니다.
+function resolveApiBaseUrl() {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return "http://localhost:8080";
   }
-  // 혹시 래핑 없이 내려오는 경우 대비
-  return resBody;
+  // 실제 배포된 EC2 IP와 백엔드 포트 8080 필수
+  return "http://16.184.21.196:8080"; 
 }
 
-// 에러 메시지 뽑기(백엔드 ApiResponse.error("...")도 잡기)
-function extractError(err) {
-  const body = err?.response?.data;
-  return body?.message || body?.error || err?.message || "요청 실패";
-}
-
-export const authApi = {
-  login: async ({ email, password }) => {
-    try {
-      const { data } = await http.post("/api/auth/login", { email, password });
-      return unwrap(data); // LoginResponse
-    } catch (err) {
-      throw new Error(extractError(err));
-    }
+const instance = axios.create({
+  baseURL: resolveApiBaseUrl(),
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
   },
+  withCredentials: true,
+});
 
-  register: async (dto) => {
-    try {
-      const { data } = await http.post("/api/auth/register", dto);
-      return unwrap(data); // Void or something
-    } catch (err) {
-      throw new Error(extractError(err));
+// 인터셉터 설정 (토큰 주입 및 401 에러 처리)
+instance.interceptors.request.use(
+  (config) => {
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
   },
+  (error) => Promise.reject(error)
+);
 
-  me: async () => {
-    try {
-      const { data } = await http.get("/api/auth/me");
-      return unwrap(data); // LoginResponse
-    } catch (err) {
-      throw new Error(extractError(err));
-    }
-  },
-
-  checkEmail: async (email) => {
-    try {
-      const { data } = await http.get(
-        `/api/auth/check-email?email=${encodeURIComponent(email)}`
-      );
-      return unwrap(data); // Boolean
-    } catch (err) {
-      throw new Error(extractError(err));
-    }
-  },
+// [핵심] 기존 productApi 등이 사용하는 .get, .post 형식을 유지하기 위한 export
+export const http = {
+  get: (url, config) => instance.get(url, config),
+  post: (url, data, config) => instance.post(url, data, config),
+  put: (url, data, config) => instance.put(url, data, config),
+  del: (url, config) => instance.delete(url, config),
 };
+
+export default instance;
